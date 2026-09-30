@@ -4,6 +4,7 @@
 import ShowImage from './ShowImage.vue'
 import DigitalCountdown from './DigitalCountdown.vue'
 import HourglassCountdown from './HourglassCountdown.vue'
+import StarField from './StarField.vue'
 import type { HorseNapConfig } from '../types'
 
 const props = defineProps<{
@@ -21,6 +22,7 @@ const props = defineProps<{
 
 <template>
   <div class="stage" :class="{ 'stage--full': props.full }">
+    <StarField />
     <header class="stage-head">
       <h1 class="stage-title">{{ props.title }}</h1>
       <p class="stage-subtitle">{{ props.subtitle }}</p>

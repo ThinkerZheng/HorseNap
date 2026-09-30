@@ -91,12 +91,9 @@ export async function loadConfig() {
   } catch (e) {
     console.error('load_config failed, using defaults', e)
   }
-  // 全新安装：默认模板内容
+  // 全新安装：默认模板内容（模板缺失时保持空字段，不抛错）
   const tpl = findTemplate(config.template.categoryId, config.template.templateId)
   if (tpl) applyTemplateToConfig(config, tpl, config.locale)
-  config.title = pick(tpl!.title, config.locale)
-  config.subtitle = pick(tpl!.subtitle, config.locale)
-  config.reason = pick(tpl!.reason, config.locale)
 }
 
 export function initConfigWatch() {

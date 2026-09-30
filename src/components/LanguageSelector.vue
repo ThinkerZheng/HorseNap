@@ -1,19 +1,13 @@
 <script setup lang="ts">
-// 语言切换（§21）：切换 UI 语言；未自定义内容时同步重套当前模板的新语言文案
+// 语言切换（§21）：只切换 UI 语言；已写入配置的告示内容不覆盖、不翻译，
+// 需要其他语言的模板文案时由用户重新应用模板。
 import { ALL_LOCALES } from '../types'
 import type { Locale } from '../types'
 import { LOCALE_NAMES, hasLocale } from '../i18n'
-import { findTemplate } from '../templates'
-import { config, applyTemplateToConfig } from '../store'
-import { syncModifiedFlag } from '../display'
+import { config } from '../store'
 
 function setLang(loc: Locale) {
   config.locale = loc
-  if (!config.contentModified) {
-    const tpl = findTemplate(config.template.categoryId, config.template.templateId)
-    if (tpl) applyTemplateToConfig(config, tpl, loc)
-  }
-  syncModifiedFlag()
 }
 </script>
 

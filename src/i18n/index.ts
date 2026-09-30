@@ -57,11 +57,9 @@ export function formatDuration(minutes: number, locale: Locale): string {
       /* fall through */
     }
   }
-  try {
-    return new Intl.RelativeTimeFormat(intlLocale, { numeric: 'always' }).format(minutes, 'minute')
-  } catch {
-    return `${minutes} min`
-  }
+  // 兜底用中性「数量 + 单位」；不用 RelativeTimeFormat，避免产出
+  // “in 20 minutes” 这类带方向前缀的文案嵌进理由句子（审查报告·低项）
+  return `${minutes} min`
 }
 
 export function applyDirection(locale: Locale) {

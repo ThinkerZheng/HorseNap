@@ -24,6 +24,14 @@ const DISPLAY_LABEL_PREFIX = 'display-'
 let displayWindows: string[] = []
 let tickTimer: number | undefined
 let soundPlayed = false
+let hotplugTimer: number | undefined
+/** 已开窗口覆盖的显示器位置（热插拔对比基准，§19.4） */
+let openedPositions: string[] = []
+
+/** 电源保持失败仅记录并继续展示（§31；非 Windows 平台目前为 stub） */
+function keepAwake(on: boolean) {
+  invoke('set_keep_awake', { on }).catch((e) => console.warn('set_keep_awake failed', e))
+}
 
 export const remainingMs = computed(() => {
   if (deadlineMs.value == null) return null
@@ -89,6 +97,34 @@ async function onDeadlineReached() {
   }
 }
 
+/** 在指定显示器创建并显示一个全屏窗口 */
+async function spawnOnMonitor(
+  mon: { position: { x: number; y: number }; size: { width: number; height: number } },
+  label: string,
+) {
+  const win = new WebviewWindow(label, {
+    url: `index.html?display=1`,
+    x: mon.position.x,
+    y: mon.position.y,
+    width: mon.size.width,
+    height: mon.size.height,
+    decorations: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    focus: true,
+    visible: false,
+  })
+  displayWindows.push(label)
+  return new Promise<void>((resolve) => {
+    win.once('tauri://created', () => {
+      // visible:false 创建的窗口不会自行出现，必须显式 show
+      void win.show().catch(() => undefined)
+      resolve()
+    })
+    win.once('tauri://error', () => resolve())
+  })
+}
+
 /** 创建全屏展示窗口（按显示范围，§19.4） */
 async function createDisplayWindows(): Promise<boolean> {
   try {
@@ -106,24 +142,9 @@ async function createDisplayWindows(): Promise<boolean> {
         targets = matched
       }
     }
+    openedPositions = targets.map((m) => `${m.position.x},${m.position.y}`)
     await Promise.all(
-      targets.map((mon, i) => {
-        const label = `${DISPLAY_LABEL_PREFIX}${i}`
-        const win = new WebviewWindow(label, {
-          url: `index.html?display=1`,
-          x: mon.position.x,
-          y: mon.position.y,
-          width: mon.size.width,
-          height: mon.size.height,
-          decorations: false,
-          alwaysOnTop: true,
-          skipTaskbar: true,
-          focus: true,
-          visible: false,
-        })
-        displayWindows.push(label)
-        return new Promise<void>((resolve) => win.once('tauri://created', () => resolve()))
-      }),
+      targets.map((mon, i) => spawnOnMonitor(mon, `${DISPLAY_LABEL_PREFIX}${i}`)),
     )
     return displayWindows.length > 0
   } catch (e) {
@@ -133,6 +154,7 @@ async function createDisplayWindows(): Promise<boolean> {
 }
 
 async function closeDisplayWindows() {
+  stopHotplugWatch()
   const wins = await WebviewWindow.getAll().catch(() => [])
   for (const w of wins) {
     if (w.label.startsWith(DISPLAY_LABEL_PREFIX)) {
@@ -140,6 +162,41 @@ async function closeDisplayWindows() {
     }
   }
   displayWindows = []
+  openedPositions = []
+}
+
+/** 多显示器热插拔：展示期间轮询，新增显示器（range=all）自动纳入（§19.4，3s 防抖） */
+function startHotplugWatch() {
+  if (hotplugTimer) return
+  hotplugTimer = window.setInterval(async () => {
+    if (appState.value !== 'displaying') {
+      stopHotplugWatch()
+      return
+    }
+    if (config.display.mode !== 'all') return
+    try {
+      const monitors = await availableMonitors()
+      const missing = monitors.filter((m) => !openedPositions.includes(`${m.position.x},${m.position.y}`))
+      if (!missing.length) return
+      // 接入瞬间可能连续变化，先等一轮稳定再创建
+      await new Promise((r) => window.setTimeout(r, 1500))
+      const fresh = await availableMonitors()
+      for (const m of fresh) {
+        const pos = `${m.position.x},${m.position.y}`
+        if (openedPositions.includes(pos) || !missing.some((x) => `${x.position.x},${x.position.y}` === pos)) continue
+        openedPositions.push(pos)
+        await spawnOnMonitor(m, `${DISPLAY_LABEL_PREFIX}hot-${m.position.x}-${m.position.y}`)
+        await broadcastSnapshot()
+      }
+    } catch {
+      /* 轮询失败静默，下一轮重试 */
+    }
+  }, 3000)
+}
+
+function stopHotplugWatch() {
+  if (hotplugTimer) window.clearInterval(hotplugTimer)
+  hotplugTimer = undefined
 }
 
 // ---------- 用户操作入口 ----------
@@ -163,7 +220,8 @@ export async function startDisplay() {
   }
   appState.value = 'displaying'
   startTick()
-  await invoke('set_keep_awake', { on: true }) // 电源保持（§17）
+  startHotplugWatch()
+  keepAwake(true) // 电源保持（§17）；失败不阻断展示（§31）
   await broadcastSnapshot()
 }
 
@@ -185,7 +243,7 @@ export async function stopTimer() {
   appState.value = 'idle'
   stopTick()
   await closeDisplayWindows()
-  await invoke('set_keep_awake', { on: false })
+  keepAwake(false)
   const main = (await import('@tauri-apps/api/window')).getCurrentWindow()
   await main.show().catch(() => undefined)
   await broadcastSnapshot()
@@ -198,7 +256,7 @@ export async function finishToIdle() {
   appState.value = 'idle'
   stopTick()
   await closeDisplayWindows()
-  await invoke('set_keep_awake', { on: false })
+  keepAwake(false)
   const main = (await import('@tauri-apps/api/window')).getCurrentWindow()
   await main.show().catch(() => undefined)
 }
@@ -250,7 +308,7 @@ function buildFallbackSnapshot(): DisplaySnapshot {
 /** 展示窗口任意键退出（§16：仅物理键盘；鼠标不退出） */
 export function installDisplayKeyHandler() {
   window.addEventListener('keydown', (e) => {
-    // 排除浏览器保留的组合，正常键/Esc 均触发
+    // §19.3 语义即「任意物理按键（含 Esc）」退出；鼠标不退出
     void emit('display-exit-request', undefined)
     e.preventDefault()
   })

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 // 内置预设：睡觉的橘猫（§3.1 image.preset 'cat'）
 // 蜷缩成一团的橘色虎斑猫，呼吸起伏 + 尾巴轻摆 + Zzz
+import { prefersReducedMotion } from '../motion'
+const reduced = prefersReducedMotion
 </script>
 
 <template>
@@ -9,7 +11,7 @@
 
     <!-- 身体团（呼吸） -->
     <g>
-      <animateTransform
+      <animateTransform v-if="!reduced"
         attributeName="transform"
         type="scale"
         values="1 1; 1.02 1.03; 1 1"
@@ -31,7 +33,7 @@
 
       <!-- 尾巴环绕（轻摆） -->
       <path d="M285 235 q55 -8 40 -60 q-8 -28 -40 -30" fill="none" stroke="#e08b3e" stroke-width="18" stroke-linecap="round">
-        <animate attributeName="d"
+        <animate v-if="!reduced" attributeName="d"
           values="M285 235 q55 -8 40 -60 q-8 -28 -40 -30; M285 235 q60 -4 48 -58 q-8 -26 -38 -26; M285 235 q55 -8 40 -60 q-8 -28 -40 -30"
           dur="5s" repeatCount="indefinite" />
       </path>
@@ -58,17 +60,17 @@
 
     <!-- Zzz -->
     <g fill="#9fb0d0" font-family="'Segoe UI', sans-serif" font-weight="700">
-      <text x="210" y="90" font-size="20" opacity="0">Z
-        <animate attributeName="opacity" values="0;0.9;0" dur="2.8s" repeatCount="indefinite" />
-        <animateTransform attributeName="transform" type="translate" values="0 0; 10 -28" dur="2.8s" repeatCount="indefinite" />
+      <text x="210" y="90" font-size="20" :opacity="reduced ? 0.7 : 0">Z
+        <animate v-if="!reduced" attributeName="opacity" values="0;0.9;0" dur="2.8s" repeatCount="indefinite" />
+        <animateTransform v-if="!reduced" attributeName="transform" type="translate" values="0 0; 10 -28" dur="2.8s" repeatCount="indefinite" />
       </text>
-      <text x="232" y="70" font-size="26" opacity="0">Z
-        <animate attributeName="opacity" values="0;0.9;0" dur="2.8s" begin="0.5s" repeatCount="indefinite" />
-        <animateTransform attributeName="transform" type="translate" values="0 0; 12 -30" dur="2.8s" begin="0.5s" repeatCount="indefinite" />
+      <text x="232" y="70" font-size="26" :opacity="reduced ? 0.6 : 0">Z
+        <animate v-if="!reduced" attributeName="opacity" values="0;0.9;0" dur="2.8s" begin="0.5s" repeatCount="indefinite" />
+        <animateTransform v-if="!reduced" attributeName="transform" type="translate" values="0 0; 12 -30" dur="2.8s" begin="0.5s" repeatCount="indefinite" />
       </text>
-      <text x="256" y="50" font-size="30" opacity="0">z
-        <animate attributeName="opacity" values="0;0.9;0" dur="2.8s" begin="1s" repeatCount="indefinite" />
-        <animateTransform attributeName="transform" type="translate" values="0 0; 14 -34" dur="2.8s" begin="1s" repeatCount="indefinite" />
+      <text x="256" y="50" font-size="30" :opacity="reduced ? 0.5 : 0">z
+        <animate v-if="!reduced" attributeName="opacity" values="0;0.9;0" dur="2.8s" begin="1s" repeatCount="indefinite" />
+        <animateTransform v-if="!reduced" attributeName="transform" type="translate" values="0 0; 14 -34" dur="2.8s" begin="1s" repeatCount="indefinite" />
       </text>
     </g>
   </svg>

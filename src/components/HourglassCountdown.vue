@@ -1,6 +1,8 @@
 <script setup lang="ts">
 // 沙漏倒计时（§14）：沙量按剩余比例变化，细流用 SMIL 常驻动画（低 CPU）
 import { computed } from 'vue'
+import { prefersReducedMotion } from '../motion'
+const reduced = prefersReducedMotion
 
 const props = defineProps<{ remainingMs: number | null; totalMs: number }>()
 
@@ -19,6 +21,13 @@ const topSand = computed(() => ({
   height: ratio.value * TOP_H,
 }))
 // 下锥已落下沙
+const hint = computed(() => {
+  const ms = props.remainingMs ?? props.totalMs
+  const total = Math.max(0, Math.ceil(ms / 1000))
+  const m = Math.floor(total / 60)
+  const s = total % 60
+  return s === 0 ? `${m} min` : `${m} min ${s} sec`
+})
 const botFill = computed(() => {
   const h = (1 - ratio.value) * 54
   return { y: BOT_BASE - h, height: h }
@@ -46,9 +55,9 @@ const botFill = computed(() => {
       <rect x="28" :y="botFill.y" width="64" :height="botFill.height" fill="#ffd27a" clip-path="url(#hg-bot)" />
       <!-- 中间细流 -->
       <rect x="58.5" y="78" width="3" height="60" fill="#ffd27a" opacity="0.9">
-        <animate attributeName="opacity" values="0.9;0.4;0.9" dur="0.9s" repeatCount="indefinite" />
+        <animate v-if="!reduced" attributeName="opacity" values="0.9;0.4;0.9" dur="0.9s" repeatCount="indefinite" />
       </rect>
     </svg>
-    <div class="hourglass-hint">{{ Math.max(1, Math.ceil((remainingMs ?? totalMs) / 60000)) }} min</div>
+    <div class="hourglass-hint">{{ hint }}</div>
   </div>
 </template>

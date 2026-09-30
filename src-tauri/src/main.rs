@@ -24,10 +24,42 @@ fn play_chime() -> Result<(), String> {
     sound::play_chime(&std::env::temp_dir())
 }
 
+/// 前端调用：用系统默认浏览器打开外链（§26 关于页；WebView 内 target=_blank 无效）
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    if !(url.starts_with("https://") || url.starts_with("http://")) {
+        return Err("only http/https allowed".into());
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        let mut c = std::process::Command::new("cmd");
+        c.args(["/C", "start", "", &url]);
+        c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+        c.spawn().map(|_| ()).map_err(|e| e.to_string())
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&url)
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&url)
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+}
+
 fn main() {
     let mut builder = tauri::Builder::default();
 
-    // 单实例：二次启动时聚焦已有主窗口（需求 §20）
+    // 单实例：二次启动时聚焦已有实例（需求 §20）
     builder = builder.plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
         if let Some(w) = app.get_webview_window("main") {
             let _ = w.unminimize();
@@ -35,6 +67,9 @@ fn main() {
             let _ = w.set_focus();
         }
     }));
+
+    // 文件选择对话框（§13 / §23）
+    builder = builder.plugin(tauri_plugin_dialog::init());
 
     builder
         .invoke_handler(tauri::generate_handler![
@@ -45,6 +80,7 @@ fn main() {
             tray::set_tray_labels,
             set_keep_awake,
             play_chime,
+            open_url,
         ])
         .setup(|app| {
             // 托盘状态：文案由前端按语言下发

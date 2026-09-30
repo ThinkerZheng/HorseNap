@@ -54,13 +54,15 @@ input, textarea, select {
   user-select: text;
 }
 textarea { resize: vertical; min-height: 68px; }
-input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+/* 可见焦点（§29 无障碍）：键盘导航时用轮廓环标出 */
+input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 1px; }
 .label { color: var(--text-dim); font-size: 13px; margin-bottom: 6px; display: block; }
 ::-webkit-scrollbar { width: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
 
 /* ---------- 主窗口布局 ---------- */
-.main-view { height: 100%; display: flex; flex-direction: column; }
+.main-view { height: 100%; display: flex; flex-direction: column; position: relative; }
 .topbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--bg-soft); }
 .brand-name { font-weight: 700; font-size: 18px; }
 .brand-tag { color: var(--text-dim); font-size: 12px; }
@@ -72,7 +74,7 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
 .state-badge.preview { color: var(--accent-2); border-color: var(--accent-2); }
 .state-badge.displaying { color: var(--accent); border-color: var(--accent); }
 .state-badge.finished { color: var(--danger); border-color: var(--danger); }
-.content { flex: 1; display: grid; grid-template-columns: minmax(340px, 460px) 1fr; gap: 18px; padding: 18px; overflow: hidden; }
+.content { flex: 1; display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 18px; padding: 18px; overflow: hidden; }
 .col-edit { overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding-right: 6px; }
 .col-preview { display: flex; flex-direction: column; gap: 16px; overflow-y: auto; }
 .actions { display: flex; gap: 10px; }
@@ -162,7 +164,38 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
 
 /* ---------- 实时预览 ---------- */
 .preview-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; box-shadow: var(--shadow); }
+.preview-wrap { position: relative; }
 .preview-screen { container-type: size; width: 100%; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; }
+.edit-hint { color: var(--text-dim); font-size: 12.5px; margin-top: 8px; }
+
+/* ---------- 点击预览热区 + 浮层编辑面板（§3.2 / §12） ---------- */
+.hotspot { position: absolute; z-index: 4; background: transparent; border: 1px dashed transparent; border-radius: 10px; cursor: pointer; padding: 0; box-shadow: none; }
+.hotspot:hover { border-color: rgba(110, 168, 254, 0.6); background: rgba(110, 168, 254, 0.08); }
+.hotspot::after { content: '✎'; position: absolute; right: 8px; top: 4px; font-size: 13px; color: var(--accent); opacity: 0; }
+.hotspot:hover::after { opacity: 0.9; }
+.hs-head { left: 3%; top: 2%; right: 3%; height: 20%; }
+.hs-image { left: 3%; top: 24%; width: 48%; height: 62%; }
+.hs-count { right: 3%; top: 24%; width: 42%; height: 34%; }
+.hs-reason { right: 3%; top: 60%; width: 42%; height: 26%; }
+.edit-overlay { position: absolute; inset: 0; z-index: 20; background: rgba(7, 11, 22, 0.68); backdrop-filter: blur(3px); border-radius: 10px; display: flex; align-items: flex-start; justify-content: center; padding: 14px; overflow: auto; }
+.edit-card { width: min(100%, 430px); background: var(--bg-soft); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+.edit-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.edit-card .panel { background: transparent; border: none; padding: 0; }
+.link-btn { background: none; border: none; color: var(--accent); cursor: pointer; padding: 0; font-size: inherit; text-decoration: underline; }
+
+/* ---------- 星空背景（§14 / §25） ---------- */
+.starfield { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.sf-star { position: absolute; border-radius: 50%; background: #cfe0ff; opacity: 0.6; animation: sf-tw 3s ease-in-out infinite alternate; }
+@keyframes sf-tw { from { opacity: 0.1; transform: scale(0.7); } to { opacity: 0.9; transform: scale(1); } }
+.sf-moon { position: absolute; right: 6%; top: 7%; width: min(7vw, 84px); height: min(7vw, 84px); border-radius: 50%; background: radial-gradient(circle at 38% 35%, #f6f2df, #ded7ba 62%, #b8b190); box-shadow: 0 0 24px rgba(246, 242, 223, 0.3); }
+.stage .stage-head, .stage .stage-body, .stage .stage-hint { position: relative; z-index: 1; }
+.main-view > .topbar, .main-view > .content { position: relative; z-index: 1; }
+
+/* 减少动态效果（§29） */
+@media (prefers-reduced-motion: reduce) {
+  .sf-star { animation: none; opacity: 0.5; }
+  * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
 `
 
 export function injectGlobalStyle() {

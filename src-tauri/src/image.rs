@@ -64,39 +64,54 @@ fn bitmap_dims(bytes: &[u8], kind: &str) -> Option<(u32, u32)> {
             None
         }
         "webp" => {
-            // VP8X / VP8L / VP8 简易解析：宽高超 8192 的场景极少，此处宽松通过
-            Some((1, 1))
+            // 按 RIFF 子块解析真实尺寸（VP8 / VP8L / VP8X），避免绕过像素上限
+            if bytes.len() < 30 {
+                return None;
+            }
+            match &bytes[12..16] {
+                b"VP8 " => {
+                    let w = u16::from_le_bytes(bytes[26..28].try_into().ok()?) as u32 & 0x3fff;
+                    let h = u16::from_le_bytes(bytes[28..30].try_into().ok()?) as u32 & 0x3fff;
+                    Some((w, h))
+                }
+                b"VP8L" => {
+                    // 14bit 宽-1 / 14bit 高-1，小端位流从签名字节后开始
+                    let bits = u32::from_le_bytes(bytes[21..25].try_into().ok()?);
+                    Some(((bits & 0x3fff) + 1, ((bits >> 14) & 0x3fff) + 1))
+                }
+                b"VP8X" => {
+                    let w = (bytes[24] as u32
+                        | (bytes[25] as u32) << 8
+                        | (bytes[26] as u32) << 16)
+                        + 1;
+                    let h = (bytes[27] as u32
+                        | (bytes[28] as u32) << 8
+                        | (bytes[29] as u32) << 16)
+                        + 1;
+                    Some((w, h))
+                }
+                _ => None,
+            }
         }
         _ => None,
     }
 }
 
-/// SVG 清洗：标签数限制 + 剥离脚本/事件/外链。
-/// 两道防线：此处清洗 + 渲染层统一用 `<img>`（浏览器不执行其中脚本）（§23）
+/// SVG 清洗：标签数限制 + §23 指定的消毒库（白名单剥离脚本/事件/外链）。
+/// 需求原文的 sanitize-svg 库已从 crates.io 消失，改用同类 svg-hush；
+/// 两道防线：此处清洗 + 渲染层统一用 `<img>`（浏览器不执行其中脚本）
 fn sanitize_svg(text: &str) -> Result<String, String> {
     // 启发式节点数：以 '<' 计数近似，恶意膨胀文件会在此或 2MB 大小限制处拒绝
     if text.matches('<').count() > MAX_NODES {
         return Err("sanitize:too_many_nodes".into());
     }
-
-    let patterns: [&str; 10] = [
-        r"(?is)<script[^>]*>.*?</script>",
-        r"(?is)<script[^>]*/?>",
-        r"(?is)<iframe[^>]*>.*?</iframe>",
-        r"(?is)<iframe[^>]*/?>",
-        r"(?is)<foreignObject[^>]*>.*?</foreignObject>",
-        r"(?is)<embed[^>]*/?>",
-        r"(?is)<object[^>]*>.*?</object>",
-        r#"(?i)\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)"#,
-        r#"(?i)(xlink:)?href\s*=\s*("(?!#)[^"]*"|'(?!#)[^']*')"#,
-        r#"(?i)(src|xlink:href)\s*=\s*("|')?\s*javascript:[^"]*"?"#,
-    ];
-
-    let mut cleaned = text.to_string();
-    for p in patterns {
-        let re = regex::Regex::new(p).map_err(|e| e.to_string())?;
-        cleaned = re.replace_all(&cleaned, "").to_string();
-    }
+    let mut input: &[u8] = text.as_bytes();
+    let mut out: Vec<u8> = Vec::new();
+    let filter = svg_hush::Filter::new();
+    filter
+        .filter(&mut input, &mut out)
+        .map_err(|e| format!("sanitize:{e}"))?;
+    let cleaned = String::from_utf8(out).map_err(|_| "sanitize:encoding".to_string())?;
     if !cleaned.contains("<svg") {
         return Err("sanitize:empty".into());
     }

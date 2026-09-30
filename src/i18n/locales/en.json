@@ -39,12 +39,16 @@
   "image": {
     "preset": "Preset images",
     "upload": "Upload image",
+        "choose": "Choose image file…",
     "presetHorse": "Sleeping horse",
     "presetCat": "Sleeping cat",
     "unsupported": "Unsupported file type. Only SVG / PNG / JPG / GIF / WebP are allowed",
     "tooLarge": "File too large (SVG ≤ 2MB, others ≤ 10MB)",
     "sanitizeFailed": "SVG sanitization failed, import rejected",
     "importFailed": "Image import failed"
+  },
+  "preview": {
+    "editHint": "Click a region in the preview to edit it"
   },
   "display": {
     "fullscreen": "Fullscreen",

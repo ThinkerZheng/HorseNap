@@ -1,6 +1,8 @@
 <script setup lang="ts">
 // 内置预设：睡觉的白马（§3.1 image.preset 'horse'）
 // 声明式 SMIL 动画：呼吸起伏 + Zzz 飘动，无常驻 JS 循环（§18 低 CPU）
+import { prefersReducedMotion } from '../motion'
+const reduced = prefersReducedMotion
 </script>
 
 <template>
@@ -10,7 +12,7 @@
 
     <!-- 身体（呼吸缩放） -->
     <g>
-      <animateTransform
+      <animateTransform v-if="!reduced"
         attributeName="transform"
         type="scale"
         values="1 1; 1.015 1.03; 1 1"
@@ -47,17 +49,17 @@
 
     <!-- Zzz 飘动 -->
     <g fill="#9fb0d0" font-family="'Segoe UI', sans-serif" font-weight="700">
-      <text x="330" y="80" font-size="20" opacity="0">Z
-        <animate attributeName="opacity" values="0;0.9;0" dur="3s" repeatCount="indefinite" />
-        <animateTransform attributeName="transform" type="translate" values="0 0; 10 -30" dur="3s" repeatCount="indefinite" />
+      <text x="330" y="80" font-size="20" :opacity="reduced ? 0.7 : 0">Z
+        <animate v-if="!reduced" attributeName="opacity" values="0;0.9;0" dur="3s" repeatCount="indefinite" />
+        <animateTransform v-if="!reduced" attributeName="transform" type="translate" values="0 0; 10 -30" dur="3s" repeatCount="indefinite" />
       </text>
-      <text x="350" y="60" font-size="26" opacity="0">Z
-        <animate attributeName="opacity" values="0;0.9;0" dur="3s" begin="0.6s" repeatCount="indefinite" />
-        <animateTransform attributeName="transform" type="translate" values="0 0; 12 -34" dur="3s" begin="0.6s" repeatCount="indefinite" />
+      <text x="350" y="60" font-size="26" :opacity="reduced ? 0.6 : 0">Z
+        <animate v-if="!reduced" attributeName="opacity" values="0;0.9;0" dur="3s" begin="0.6s" repeatCount="indefinite" />
+        <animateTransform v-if="!reduced" attributeName="transform" type="translate" values="0 0; 12 -34" dur="3s" begin="0.6s" repeatCount="indefinite" />
       </text>
-      <text x="372" y="40" font-size="32" opacity="0">z
-        <animate attributeName="opacity" values="0;0.9;0" dur="3s" begin="1.2s" repeatCount="indefinite" />
-        <animateTransform attributeName="transform" type="translate" values="0 0; 14 -38" dur="3s" begin="1.2s" repeatCount="indefinite" />
+      <text x="372" y="40" font-size="32" :opacity="reduced ? 0.5 : 0">z
+        <animate v-if="!reduced" attributeName="opacity" values="0;0.9;0" dur="3s" begin="1.2s" repeatCount="indefinite" />
+        <animateTransform v-if="!reduced" attributeName="transform" type="translate" values="0 0; 14 -38" dur="3s" begin="1.2s" repeatCount="indefinite" />
       </text>
     </g>
   </svg>

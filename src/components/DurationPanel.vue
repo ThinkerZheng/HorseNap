@@ -4,7 +4,7 @@ import { config } from '../store'
 import { appState, onDurationChanged, stopTimer } from '../display'
 import type { CountdownStyle } from '../types'
 
-const PRESETS = [5, 10, 15, 20, 30, 45, 60]
+const PRESETS = [5, 10, 15, 20, 30, 60]
 
 function setMinutes(v: number) {
   const clamped = Math.min(180, Math.max(1, Math.round(v || 1)))

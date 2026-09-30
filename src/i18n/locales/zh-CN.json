@@ -39,12 +39,16 @@
   "image": {
     "preset": "预设图片",
     "upload": "上传图片",
+    "choose": "选择图片文件…",
     "presetHorse": "熟睡白马",
     "presetCat": "熟睡橘猫",
     "unsupported": "不支持的文件类型，仅支持 SVG / PNG / JPG / GIF / WebP",
     "tooLarge": "文件过大（SVG ≤ 2MB，其他 ≤ 10MB）",
     "sanitizeFailed": "SVG 安全清洗失败，已拒绝导入",
     "importFailed": "图片导入失败"
+  },
+  "preview": {
+    "editHint": "点击预览中的区域即可编辑对应内容"
   },
   "display": {
     "fullscreen": "全屏",

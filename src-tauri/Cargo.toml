@@ -12,10 +12,13 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = ["tray-icon", "image-png", "protocol-asset"] }
 tauri-plugin-single-instance = "2"
+tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 anyhow = "1"
-regex = "1"
+# §23：SVG 消毒用成熟库（白名单机制）。需求原文指定的 sanitize-svg 已从 crates.io 消失，
+# 采用同类维护活跃的 svg-hush（resvg 作者）替代
+svg-hush = "0.9"
 
 # Windows 电源保持（SetThreadExecutionState）
 [target.'cfg(windows)'.dependencies]

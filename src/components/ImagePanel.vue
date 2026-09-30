@@ -4,6 +4,7 @@
 import { onMounted, onBeforeUnmount, ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
+import { open } from '@tauri-apps/plugin-dialog'
 import { useI18n } from 'vue-i18n'
 import { config } from '../store'
 import { syncModifiedFlag } from '../display'
@@ -41,6 +42,12 @@ async function importPath(source: string) {
   }
 }
 
+async function chooseFile() {
+  try {
+    const sel = await open({ multiple: false, filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'] }] })
+    if (typeof sel === 'string' && sel) void importPath(sel)
+  } catch { /* 用户取消 */ }
+}
 onMounted(async () => {
   const win = getCurrentWebviewWindow()
   const un = await win.onDragDropEvent((event) => {
@@ -84,6 +91,8 @@ onBeforeUnmount(() => unlisten?.())
         <div class="dropzone-sub">SVG / PNG / JPG / GIF / WebP</div>
       </template>
     </div>
+
+    <button class="ghost" @click="chooseFile">{{ $t('image.choose') }}</button>
 
     <p v-if="error" class="error">{{ error }}</p>
   </div>

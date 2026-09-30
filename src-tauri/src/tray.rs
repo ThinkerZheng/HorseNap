@@ -3,7 +3,7 @@
 // 菜单文案由前端按当前语言下发（set_tray_labels）。
 
 use std::sync::Mutex;
-use tauri::menu::{Menu, MenuBuilder, MenuItem, PredefinedMenuItem};
+use tauri::menu::{Menu, MenuBuilder, MenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -49,10 +49,11 @@ pub fn build_tray(app: &AppHandle) -> tauri::Result<()> {
             ID_QUIT => {
                 crate::power::set_keep_awake(false).ok();
                 for (label, w) in app.webview_windows() {
-                    if label.starts_with("display-") {
+                    if label.starts_with("display-") || label == "main" {
                         let _ = w.close();
                     }
                 }
+                app.remove_tray_by_id("main-tray");
                 app.exit(0);
             }
             _ => {}
@@ -106,7 +107,14 @@ fn build_menu(app: &AppHandle, labels: &Labels) -> tauri::Result<Menu<tauri::Wry
             None::<&str>,
         )?)
         .separator()
-        .item(&PredefinedMenuItem::quit(app, Some(&default(&labels.quit, "Quit")))?)
+        // 自定义 Quit（非 PredefinedMenuItem）：使 ID_QUIT 分支的清理逻辑可达
+        .item(&MenuItem::with_id(
+            app,
+            ID_QUIT,
+            default(&labels.quit, "Quit"),
+            true,
+            None::<&str>,
+        )?)
         .build()?;
     Ok(m)
 }

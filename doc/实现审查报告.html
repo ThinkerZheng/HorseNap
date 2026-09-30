@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HorseNap 实现审查报告</title>
+<style>
+  :root {
+    --bg: #0d1526;
+    --card: #16203a;
+    --panel: #1b2942;
+    --border: #2a3a5a;
+    --text: #e8eefc;
+    --dim: #9fb0d0;
+    --accent: #6ea8fe;
+    --warn: #ffd27a;
+    --danger: #ff8fa3;
+    --ok: #7ee0a8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 40px 20px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.75;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  header { border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 28px; }
+  h1 { font-size: 26px; margin: 0 0 8px; }
+  h2 {
+    font-size: 19px;
+    margin: 36px 0 14px;
+    padding-left: 12px;
+    border-left: 4px solid var(--accent);
+  }
+  h3 { font-size: 16px; margin: 20px 0 8px; }
+  .meta { color: var(--dim); font-size: 13px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin: 14px 0;
+  }
+  .card.danger { border-left: 4px solid var(--danger); }
+  .card.warn   { border-left: 4px solid var(--warn); }
+  .card.ok     { border-left: 4px solid var(--ok); }
+  .tag {
+    display: inline-block;
+    font-size: 12px;
+    padding: 1px 9px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+    margin-right: 8px;
+    vertical-align: 1px;
+  }
+  .t-danger { color: var(--danger); }
+  .t-warn   { color: var(--warn); }
+  .t-ok     { color: var(--ok); }
+  code {
+    background: #0b1220;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 1px 6px;
+    font-family: Consolas, "Cascadia Mono", monospace;
+    font-size: 13px;
+    color: #cfe0ff;
+  }
+  pre {
+    background: #0b1220;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    font-size: 13px;
+    color: #cfe0ff;
+  }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+  th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--panel); color: var(--dim); font-weight: 600; }
+  ul { padding-left: 22px; }
+  li { margin: 4px 0; }
+  .lead { color: var(--dim); }
+  .fix { color: var(--dim); font-size: 13.5px; }
+  footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--dim); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>HorseNap 实现审查报告</h1>
+    <div class="meta">
+      对照 <code>doc/需求.md</code> · 审查范围：前端（Vue 3）与 Tauri/Rust 全部源文件 · 方式：静态审查（未运行 GUI）· 2026-09-30
+    </div>
+  </header>
+
+  <section>
+    <h2>总体结论</h2>
+    <div class="card">
+      <p>覆盖度约 <strong>80%</strong>。架构、状态机、数据模型、配置持久化与图片安全管线质量较高；问题集中在
+      <strong>「展示窗口能否真正显示」</strong>、<strong>「跨平台电源保持与 12 语言未落地」</strong> 以及
+      <strong>「视觉 / 交互细节偏离需求」</strong>。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>一、严重问题（阻断核心功能）</h2>
+
+    <div class="card danger">
+      <h3><span class="tag t-danger">阻断</span>1. 展示窗口创建后从未 show()</h3>
+      <p><code>src/display.ts</code> 创建窗口时设 <code>visible: false</code>，之后只 resolve，全仓库不存在对展示窗口的
+      <code>show()</code> 调用；而 <code>startDisplay</code> 又会先隐藏主窗口。若窗口确未显示，用户点击「全屏」后屏幕将<strong>完全空白</strong>。</p>
+      <pre>const win = new WebviewWindow(label, { ..., visible: false })
+return new Promise&lt;void&gt;((resolve) =&gt; win.once('tauri://created', () =&gt; resolve()))</pre>
+      <p class="fix">修法：在 <code>tauri://created</code> 后调用 <code>win.show()</code>，或直接使用 <code>visible: true</code>。建议优先实测确认。</p>
+    </div>
+
+    <div class="card danger">
+      <h3><span class="tag t-danger">阻断</span>2. 非 Windows 平台因电源保持报错中断启动流程</h3>
+      <p><code>src-tauri/src/power.rs</code> 在 macOS / Linux 为 stub，直接返回 <code>Err</code>；而 <code>startDisplay</code> 中该调用未捕获：</p>
+      <pre>await invoke('set_keep_awake', { on: true })  // §17
+await broadcastSnapshot()</pre>
+      <p>结果：非 Windows 下抛异常并<strong>跳过 broadcastSnapshot()</strong>，展示窗口拿不到 <code>deadlineMs</code>、倒计时不走，同时产生未捕获的 Promise rejection。既违反 §17 三平台要求，也是实际缺陷。</p>
+      <p class="fix">修法：按 §31「记录日志并继续展示」捕获异常，并补 macOS（IOPMAssertion）/ Linux（inhibit）实现或明确降级。</p>
+    </div>
+
+    <div class="card danger">
+      <h3><span class="tag t-danger">未完成</span>3. 12 语言未交付（§21）</h3>
+      <p>仅提供 <code>zh-CN</code> / <code>zh-TW</code> / <code>en</code>，其余 9 种语言 UI 与模板文案均回退英语。回退机制本身符合 §21 降级条款，但「12 语言须在发布前完成」未达成。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>二、与需求不符（中等）</h2>
+    <table>
+      <thead>
+        <tr><th>#</th><th>位置 / 需求</th><th>问题</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>4</td><td><code>styles.ts</code> · §14</td><td>星空背景缺失：仅有渐变底色，没有 doc 要求的「闪烁的小星星」节点与动画。</td></tr>
+        <tr><td>5</td><td><code>LanguageSelector.vue</code> · §21</td><td>语义与需求相反：需求为「切换语言不改动告示内容」，实现却在未自定义时用新语言重套模板文案（改标题/副标题/理由）。需二选一并统一。</td></tr>
+        <tr><td>6</td><td><code>display.ts</code> · §19.4</td><td>多显示器热插拔「立即加入」未实现（无显示器变化监听）；也未做 Wayland 降级（直接用 x/y 定位在 Wayland 无效）。</td></tr>
+        <tr><td>7</td><td><code>display.ts</code> · §15/§4</td><td>全屏用「无边框 + 覆盖显示器尺寸」而非 <code>setFullscreen</code>；预览固定 16:9，未按实际屏幕比例，与「预览与全屏 1:1 同构」有出入。</td></tr>
+        <tr><td>8</td><td><code>MainView.vue</code> · §3.2/§12</td><td>交互不符：实现为左侧常驻面板列表，需求是「点击预览区域 → 打开浮层编辑面板」。</td></tr>
+        <tr><td>9</td><td><code>ImagePanel.vue</code> · §13</td><td>仅支持拖拽导入，缺少文件选择对话框（未接入 dialog）。</td></tr>
+        <tr><td>10</td><td><code>HorseSvg.vue</code> · §6.3</td><td>预设插画与视觉要求差距较大：白马无鞍具、无草地、无月亮，整体为简化卡通，不符合「装备完整、帅气」。</td></tr>
+        <tr><td>11</td><td>全局 · §29</td><td>无障碍基本缺失：无 <code>prefers-reduced-motion</code> 处理；<code>input:focus{outline:none}</code> 削弱可见焦点。</td></tr>
+        <tr><td>12</td><td><code>tray.rs</code> · §19.2</td><td>托盘「退出」使用 <code>PredefinedMenuItem::quit</code>，自定义 <code>ID_QUIT</code> 分支永不触发（含释放 keep-awake、关闭展示窗口）——死代码；Windows 下预定义 Quit 是否真退出需实测。</td></tr>
+        <tr><td>13</td><td><code>TemplateSelector.vue</code> · §3.1</td><td>用 <code>window.confirm</code> 做覆盖确认，WebView 下跨平台不可靠，建议改用 dialog 插件。</td></tr>
+        <tr><td>14</td><td><code>AboutPanel.vue</code></td><td>GitHub 链接 <code>target="_blank"</code>，未接入 shell open，点击多半无反应。</td></tr>
+        <tr><td>15</td><td><code>README.md</code> · §30</td><td>文件基本为空，缺少构建 / 运行 / 打包说明。</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>三、细节质量瑕疵（低）</h2>
+    <ul>
+      <li><strong>沙漏</strong>只显示 <code>xx min</code>，未提供需求示例的 <code>19 min 42 sec</code>（<code>HourglassCountdown.vue</code>）。</li>
+      <li><strong>{duration} 兜底语义错误</strong>：无 <code>Intl.DurationFormat</code> 时回退 <code>RelativeTimeFormat</code>，会产出「in 20 minutes」，英文下变成「a short break of in 20 minutes」（<code>i18n/index.ts</code>）。</li>
+      <li><strong>WebP 未校验像素上限</strong>：<code>bitmap_dims</code> 对 webp 直接返回 <code>(1,1)</code>，绕过 §13 的 ≤8192 限制（<code>image.rs</code>）。</li>
+      <li><strong>浏览器保留键未排除</strong>：注释称排除，实际对任何 <code>keydown</code> 都退出（<code>display.ts</code>）。</li>
+      <li><strong>健壮性</strong>：<code>store.ts</code> 的 <code>loadConfig</code> 使用 <code>tpl!</code> 非空断言，模板缺失时会抛错。</li>
+      <li><strong>SVG 清洗用自写正则</strong>而非需求指定的 <code>sanitize_svg</code> 库；虽有 <code>&lt;img&gt;</code> 渲染作第二道防线，仍建议换成熟库（§23）。</li>
+      <li>时长预设多出一个 <code>45</code> 分钟（需求外，无害）。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>四、做得好的部分</h2>
+    <div class="card ok">
+      <ul>
+        <li><strong>状态机与 §19.1 几乎逐条对齐</strong>：四态转移、Preview 沿用截止时刻、停止计时三条途径、到点不自动退出并播提示音。</li>
+        <li><strong>配置持久化规范</strong>（§22）：临时文件 + 原子 rename、写前校验 JSON、损坏备份 <code>.bak</code> 回退。</li>
+        <li><strong>图片安全管线完整</strong>（§13/§23/§32）：魔数识别、大小/像素限制、SVG 清洗、导入复制、孤儿清理 + 竞态保护。</li>
+        <li><strong>模板体系一致</strong>（§3.1）：4 分类 × 各 1 模板、<code>contentModified</code> 判定、覆盖前二次确认；<code>{duration}</code> 以原始文本存储并在渲染期插值（§11）。</li>
+        <li><strong>单实例</strong>（§20）、<strong>托盘菜单随语言下发</strong>（§19.2）、<strong>关闭隐藏到托盘</strong>（§19.2）均已实现。</li>
+        <li><strong>数据模型与 §28 完全对应</strong>，并将 <code>deadlineMs</code> 等归入运行时 <code>DisplaySnapshot</code>（不持久化）。</li>
+        <li><strong>动画全用 SMIL / 声明式</strong>，无常驻 JS 循环（§24）；展示只读、鼠标不退出、任意键盘键退出、2 秒隐藏指针均已落地。</li>
+        <li>响应式使用<strong>容器查询单位 <code>cqmin</code></strong>，符合 §5「不依赖固定像素」。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>五、建议处理顺序</h2>
+    <ol>
+      <li><strong>先实测确认 #1</strong>——点「全屏」后是否有画面；若确不显示，这是唯一的功能级阻断。</li>
+      <li>修 <strong>#2</strong>：<code>set_keep_awake</code> 加 <code>catch</code>，并补 mac/Linux 实现或明确降级。</li>
+      <li>决策 <strong>#5</strong>：语言切换是否改动告示内容，然后统一代码或文档。</li>
+      <li>补 <strong>#4 星空背景</strong>、<strong>#3 语言包</strong>、<strong>#8 点击预览编辑（或修订文档）</strong>。</li>
+      <li>顺手清理：托盘 Quit 死代码、README、<code>{duration}</code> 兜底文案、WebP 像素校验、<code>window.confirm</code> → dialog。</li>
+    </ol>
+  </section>
+
+ <section>
+    <h2>六、开发者复核与处置（第二轮 · 2026-09-30）</h2>
+    <div class="card ok">
+      <p><strong>总体：复核后绝大多数问题成立并已修复</strong>；少数条目的严重性或定性在下文澄清。</p>
+    </div>
+    <h3>已修复</h3>
+    <ul>
+      <li><b>#1</b>：展示窗口 <code>tauri://created</code> 后显式 <code>show()</code>，并监听 <code>tauri://error</code>。</li>
+      <li><b>#2</b>：电源保持改为失败只记日志不阻断（前端 <code>keepAwake()</code> 捕获），符合 §31；非 Windows stub 保留为待办。<em>更正一处：</em>初审时曾口头质疑本报告"未捕获"的说法——复核后确认报告正确，当时引用的是不存在的代码。</li>
+      <li><b>#5</b>：语言切换不再触碰告示内容（§21 明文：切换不覆盖、不翻译；需要新语言模板文案时重新应用模板），不存在"二选一"。</li>
+      <li><b>#4</b>：新增 StarField 星空背景（闪烁小星星 + 月亮），预览 / 全屏 / 主界面共用。</li>
+      <li><b>#6</b>：range=all 时展示期间 3s 轮询显示器，新增显示器自动纳入全屏；<b>Wayland 降级仍未实现</b>（本机无法验证，记为待办）。</li>
+      <li><b>#7</b>：预览比例改为取主显示器实际分辨率；"无边框覆盖显示器"而非 <code>setFullscreen</code> 是有意选择（多屏逐显示器定位更可控，观感等同全屏）。</li>
+      <li><b>#8</b>：改为 §12 要求的交互——左侧仅工具栏（模板 / 显示范围 / 关于），点击预览热区打开浮层编辑面板。</li>
+      <li><b>#9</b>：接入 <code>tauri-plugin-dialog</code>，拖拽之外提供文件选择对话框。</li>
+      <li><b>#11</b>：<code>prefers-reduced-motion</code> 下停用 SMIL/CSS 动画；焦点改用可见的 <code>:focus-visible</code> 轮廓环。</li>
+      <li><b>#12</b>：托盘退出改自定义 <code>MenuItem</code>，ID_QUIT 清理分支可达。<em>澄清：</em>原死代码后果有限（进程退出时 OS 自动回收执行状态与窗口），属代码卫生而非功能缺陷。</li>
+      <li><b>#13</b>：<code>window.confirm</code> → dialog 插件 <code>confirm()</code>。</li>
+      <li><b>#14</b>：新增 <code>open_url</code> 命令走系统浏览器。</li>
+      <li><b>#15</b>：README 已补（简介 / 功能 / 开发 / 打包）。</li>
+      <li>低项全部处理：沙漏显示 <code>19 min 42 sec</code>；<code>{duration}</code> 兜底改中性「N min」；WebP 按 VP8/VP8L/VP8X 解析真实像素；任意键退出注释与实现对齐（§19.3 本就是任意键）；去除 <code>tpl!</code> 非空断言；移除 45 分钟预设。</li>
+    </ul>
+    <h3>一处无法照办：§23 指定的 sanitize_svg 库</h3>
+    <div class="card warn">
+      <p>需求 §23 点名的 <code>sanitize-svg</code> crate <b>已从 crates.io 下架不存在</b>。改用同类且维护活跃的
+      <code>svg-hush</code>（resvg 作者，白名单清洗），保留节点数上限 + <code>&lt;img&gt;</code> 渲染两道防线。
+      <b>建议同步修订需求 §23 的库名</b>。</p>
+    </div>
+    <h3>仍为待办（非本轮代码可闭环）</h3>
+    <ul>
+      <li><b>#3</b>：其余 9 种语言的 UI / 模板文案（翻译工作量，当前按 §21 回退英语）。</li>
+      <li><b>#10</b>：插画的鞍具 / 草地 / 画面精细度（美术资产迭代，月亮已由星空层补上）。</li>
+      <li>macOS IOPMAssertion / Linux inhibit 电源保持实现；Wayland 降级。</li>
+    </ul>
+    <p class="meta">处置后验证：vue-tsc + vite 构建通过；cargo release 构建通过；homenap.exe 启动稳定运行（324 句柄，与此前基线一致）。</p>
+  </section>
+
+  <footer>
+    本报告基于静态代码审查，未实际运行应用；标注「需实测」的项建议在本地 <code>npm run tauri dev</code> 验证。
+  </footer>
+
+</div>
+</body>
+</html>
