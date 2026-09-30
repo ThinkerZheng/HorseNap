@@ -1,0 +1,21 @@
+{
+  "$schema": "https://schema.tauri.app/capability/2",
+  "identifier": "main-capability",
+  "description": "HorseNap 主窗口与展示窗口权限",
+  "windows": ["main", "display-*"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-focus",
+    "core:window:allow-close",
+    "core:window:allow-start-dragging",
+    "core:webview:allow-create-webview-window",
+    "core:webview:allow-webview-close",
+    "core:event:default",
+    "core:window:allow-available-monitors",
+    "core:window:allow-get-all-windows",
+    "core:window:allow-set-always-on-top",
+    "core:window:allow-set-skip-taskbar"
+  ]
+}

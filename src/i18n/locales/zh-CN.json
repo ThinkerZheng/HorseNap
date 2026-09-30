@@ -1,0 +1,82 @@
+{
+  "app": {
+    "name": "牛马小憩",
+    "tagline": "工位暂离告示牌"
+  },
+  "sidebar": {
+    "templates": "模板",
+    "language": "语言",
+    "about": "关于"
+  },
+  "template": {
+    "apply": "应用模板",
+    "overwriteConfirm": "应用模板将覆盖你已编辑的内容，是否继续？",
+    "applied": "模板已应用"
+  },
+  "panel": {
+    "close": "关闭",
+    "save": "保存",
+    "cancel": "取消"
+  },
+  "text": {
+    "title": "大标题",
+    "subtitle": "副标题",
+    "reason": "理由说明",
+    "reasonHint": "可保留 {duration} 占位符，与倒计时时长自动联动",
+    "placeholderTitle": "输入大标题",
+    "placeholderSubtitle": "输入副标题",
+    "placeholderReason": "输入理由说明"
+  },
+  "countdown": {
+    "duration": "休息 / 暂离时间",
+    "minutes": "分钟",
+    "style": "倒计时样式",
+    "styleDigital": "数字仪表",
+    "styleHourglass": "沙漏",
+    "stop": "停止计时",
+    "presets": "快捷预设"
+  },
+  "image": {
+    "preset": "预设图片",
+    "upload": "上传图片",
+    "presetHorse": "熟睡白马",
+    "presetCat": "熟睡橘猫",
+    "unsupported": "不支持的文件类型，仅支持 SVG / PNG / JPG / GIF / WebP",
+    "tooLarge": "文件过大（SVG ≤ 2MB，其他 ≤ 10MB）",
+    "sanitizeFailed": "SVG 安全清洗失败，已拒绝导入",
+    "importFailed": "图片导入失败"
+  },
+  "display": {
+    "fullscreen": "全屏",
+    "exitFullscreen": "退出全屏",
+    "keyHint": "按任意键退出全屏",
+    "range": "显示范围",
+    "rangeAll": "全部显示器",
+    "rangeSpecific": "指定显示器",
+    "finished": "休息时间到了",
+    "noMonitor": "未识别到显示器"
+  },
+  "state": {
+    "idle": "未开始",
+    "preview": "计时中",
+    "displaying": "展示中",
+    "finished": "已完成"
+  },
+  "tray": {
+    "showHide": "显示 / 隐藏主窗口",
+    "start": "进入展示",
+    "stopDisplay": "退出展示",
+    "stopTimer": "停止计时",
+    "quit": "退出应用"
+  },
+  "about": {
+    "version": "版本",
+    "license": "开源许可证",
+    "github": "GitHub 项目地址",
+    "intro": "HorseNap（牛马小憩）——让短暂的暂离变得可见、明确，并减少不必要的误解。"
+  },
+  "common": {
+    "ok": "确定",
+    "cancelBtn": "取消"
+  }
+}

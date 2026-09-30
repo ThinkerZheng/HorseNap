@@ -1,0 +1,82 @@
+{
+  "app": {
+    "name": "HorseNap",
+    "tagline": "Away-from-desk sign for tired workhorses"
+  },
+  "sidebar": {
+    "templates": "Templates",
+    "language": "Language",
+    "about": "About"
+  },
+  "template": {
+    "apply": "Apply template",
+    "overwriteConfirm": "Applying this template will overwrite your edited content. Continue?",
+    "applied": "Template applied"
+  },
+  "panel": {
+    "close": "Close",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "text": {
+    "title": "Title",
+    "subtitle": "Subtitle",
+    "reason": "Reason",
+    "reasonHint": "Keep the {duration} placeholder to stay in sync with the countdown",
+    "placeholderTitle": "Enter the title",
+    "placeholderSubtitle": "Enter the subtitle",
+    "placeholderReason": "Enter the reason"
+  },
+  "countdown": {
+    "duration": "Break / away time",
+    "minutes": "min",
+    "style": "Countdown style",
+    "styleDigital": "Digital meter",
+    "styleHourglass": "Hourglass",
+    "stop": "Stop timer",
+    "presets": "Presets"
+  },
+  "image": {
+    "preset": "Preset images",
+    "upload": "Upload image",
+    "presetHorse": "Sleeping horse",
+    "presetCat": "Sleeping cat",
+    "unsupported": "Unsupported file type. Only SVG / PNG / JPG / GIF / WebP are allowed",
+    "tooLarge": "File too large (SVG ≤ 2MB, others ≤ 10MB)",
+    "sanitizeFailed": "SVG sanitization failed, import rejected",
+    "importFailed": "Image import failed"
+  },
+  "display": {
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "keyHint": "Press any key to exit",
+    "range": "Display range",
+    "rangeAll": "All monitors",
+    "rangeSpecific": "Selected monitors",
+    "finished": "Break time is over",
+    "noMonitor": "No monitor detected"
+  },
+  "state": {
+    "idle": "Idle",
+    "preview": "Timing",
+    "displaying": "Displaying",
+    "finished": "Finished"
+  },
+  "tray": {
+    "showHide": "Show / Hide main window",
+    "start": "Start display",
+    "stopDisplay": "Stop display",
+    "stopTimer": "Stop timer",
+    "quit": "Quit app"
+  },
+  "about": {
+    "version": "Version",
+    "license": "License",
+    "github": "GitHub",
+    "intro": "HorseNap — make short absences visible, clear, and free of misunderstanding."
+  },
+  "common": {
+    "ok": "OK",
+    "cancelBtn": "Cancel"
+  }
+}
